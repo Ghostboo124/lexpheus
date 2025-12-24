@@ -6,9 +6,14 @@ services:
     restart: always
     ports:
       - 53814:3000
+    volumes:
+      - apiKeys:/usr/src/app/apiKeys.json
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+volumes:
+  apiKeys:
