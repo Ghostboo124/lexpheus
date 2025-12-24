@@ -11,7 +11,7 @@ const app = new App({
     socketMode: process.env.APP_TOKEN ? process.env.SOCKET_MODE === "true" : false,
     customRoutes: [
         {
-            path: '/health-check',
+            path: '/healthcheck',
             method: ['GET'],
             handler: (req, res) => {
                 res.writeHead(200);
