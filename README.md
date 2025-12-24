@@ -46,5 +46,5 @@ commands
 group:read
 groups:write
 im:read
-mprim:read
+mpim:read
 ```

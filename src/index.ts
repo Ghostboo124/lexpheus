@@ -125,14 +125,14 @@ async function checkAllProjects() {
     }
 }
 
-app.command('/logpheus-add', async ({ command, body, client, ack, respond, logger }) => {
-    await ack();
-    const channel = await app.client.conversations.info({
-        channel: command.channel_id
-    })
-    if (!channel) throw new Error(`Command ran in channel that doesn't exist? ${command.channel_id}`);
-    if (command.user_id !== channel.channel?.creator) return await respond("You can only run this command in a channel that you are the creator of");
+app.command(process.env.DEV_MODE === "true" ? '/devlpheus-add' : '/logpheus-add', async ({ command, body, client, ack, respond, logger }) => {
     try {
+        const channel = await app.client.conversations.info({
+            channel: command.channel_id
+        })
+        if (!channel) return await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND")
+        if (command.user_id !== channel.channel?.creator) return await ack("You can only run this command in a channel that you are the creator of");
+        await ack()
         await client.views.open({
             trigger_id: body.trigger_id,
             view: {
@@ -176,8 +176,14 @@ app.command('/logpheus-add', async ({ command, body, client, ack, respond, logge
                 }
             }
         });
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
+            await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
+            return;
+        }
+
         logger.error(error);
+        await ack("An unexpected error occurred. Check logs.");
     }
 });
 
@@ -251,56 +257,66 @@ app.view('logpheus_add', async ({ ack, view }) => {
     });
 });
 
-app.command('/logpheus-remove', async ({ command, ack, respond }) => {
-    await ack();
-    const channel = await app.client.conversations.info({
-        channel: command.channel_id
-    })
-    if (!channel) throw new Error(`Command ran in channel that doesn't exist? ${command.channel_id}`);
-    if (command.user_id !== channel.channel?.creator) return await respond("You can only run this command in a channel that you are the creator of");
-    const apiKeys = loadApiKeys();
-    const projectId = command.text.trim();
+app.command(process.env.DEV_MODE === "true" ? '/devlpheus-remove' : '/logpheus-remove', async ({ command, ack, respond, logger }) => {
+    try {
+        await ack();
+        const channel = await app.client.conversations.info({
+            channel: command.channel_id
+        })
+        if (!channel) return await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND")
+        if (command.user_id !== channel.channel?.creator) return await respond("You can only run this command in a channel that you are the creator of");
+        const apiKeys = loadApiKeys();
+        const projectId = command.text.trim();
 
-    if (projectId.length > 0) {
-        if (!Number.isInteger(Number(projectId))) return await respond("Project ID must be a valid number.");
-        for (const [apiToken, entry] of Object.entries(apiKeys)) {
-            if (entry.projects.includes(projectId)) {
-                entry.projects = entry.projects.filter(p => p !== projectId);
+        if (projectId.length > 0) {
+            if (!Number.isInteger(Number(projectId))) return await respond("Project ID must be a valid number.");
+            for (const [apiToken, entry] of Object.entries(apiKeys)) {
+                if (entry.projects.includes(projectId)) {
+                    entry.projects = entry.projects.filter(p => p !== projectId);
 
-                if (entry.projects.length === 0) {
-                    delete apiKeys[apiToken];
-                    delete clients[apiToken];
+                    if (entry.projects.length === 0) {
+                        delete apiKeys[apiToken];
+                        delete clients[apiToken];
+                    }
+
+                    delete apiKeys[projectId];
+                    fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
+                    const cacheFilePath = path.join(cacheDir, `${projectId}.json`);
+
+                    if (fs.existsSync(cacheFilePath)) {
+                        fs.unlinkSync(cacheFilePath);
+                    }
+
+                    await respond(`Removed project ${projectId} from list.`)
                 }
+            }
+        } else {
+            let foundKey: string | null = null;
 
-                delete apiKeys[projectId];
-                fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
-                const cacheFilePath = path.join(cacheDir, `${projectId}.json`);
-
-                if (fs.existsSync(cacheFilePath)) {
-                    fs.unlinkSync(cacheFilePath);
+            for (const [apiToken, entry] of Object.entries(apiKeys)) {
+                if (entry.channel === command.channel_id) {
+                    foundKey = apiToken;
+                    break;
                 }
-
-                await respond(`Removed project ${projectId} from list.`)
             }
+
+            if (!foundKey) return await respond("No API key found for this channel.");
+            const entry = apiKeys[foundKey];
+
+            delete apiKeys[foundKey];
+            delete clients[foundKey];
+
+            fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
+            return await respond("Removed all projects for this channel.");
         }
-    } else {
-        let foundKey: string | null = null;
-
-        for (const [apiToken, entry] of Object.entries(apiKeys)) {
-            if (entry.channel === command.channel_id) {
-                foundKey = apiToken;
-                break;
-            }
+    } catch (error: any) {
+        if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
+            await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
+            return;
         }
 
-        if (!foundKey) return await respond("No API key found for this channel.");
-        const entry = apiKeys[foundKey];
-
-        delete apiKeys[foundKey];
-        delete clients[foundKey];
-
-        fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
-        return await respond("Removed all projects for this channel.");
+        logger.error(error);
+        await ack("An unexpected error occurred. Check logs.");
     }
 });
 
