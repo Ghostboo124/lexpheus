@@ -18,7 +18,7 @@ export default class FT {
         this.ready = Promise.resolve();
     }
 
-    async projects(query?: FTypes.ProjectsQuery) {
+    async projects(query?: FTypes.ProjectsQuery): Promise<FTypes.Projects | void> {
         await this.ready;
         const queryString = new URLSearchParams();
         if (query) {
@@ -29,7 +29,7 @@ export default class FT {
             });
         }
 
-        return this.fetch.get<FTypes.Projects>("/projects", {
+        return this.fetch.get("/projects", {
             headers: {
                 "X-Flavortown-Ext-1865": "true"
             }
@@ -42,9 +42,9 @@ export default class FT {
             });
     }
 
-    async project(param: FTypes.ProjectParam) {
+    async project(param: FTypes.ProjectParam): Promise<FTypes.Project | void> {
         await this.ready;
-        return this.fetch.get<FTypes.Project>("/projects/" + param.id, {
+        return this.fetch.get("/projects/" + param.id, {
             headers: {
                 "X-Flavortown-Ext-1865": "true"
             }
@@ -57,7 +57,7 @@ export default class FT {
             });
     }
 
-    async devlogs(param: FTypes.ProjectParam, query?: FTypes.DevlogsQuery) {
+    async devlogs(param: FTypes.ProjectParam, query?: FTypes.DevlogsQuery): Promise<FTypes.Devlogs | void> {
         await this.ready;
         const queryString = new URLSearchParams();
         if (query) {
@@ -68,7 +68,7 @@ export default class FT {
             });
         }
 
-        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.id + "/devlogs", {
+        return this.fetch.get("/projects/" + param.id + "/devlogs", {
             headers: {
                 "X-Flavortown-Ext-1865": "true"
             }
@@ -81,9 +81,9 @@ export default class FT {
             });
     }
 
-    async devlog(param: FTypes.DevlogParam, query?: FTypes.DevlogsQuery) {
+    async devlog(param: FTypes.DevlogParam, query?: FTypes.DevlogsQuery): Promise<FTypes.Devlog | void> {
         await this.ready;
-        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.projectId + "/devlogs/" + param.devlogId, {
+        return this.fetch.get("/projects/" + param.projectId + "/devlogs/" + param.devlogId, {
             headers: {
                 "X-Flavortown-Ext-1865": "true"
             }

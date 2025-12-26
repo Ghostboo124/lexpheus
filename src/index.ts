@@ -38,7 +38,7 @@ function loadApiKeys(): Record<string, {
     return JSON.parse(fs.readFileSync(apiKeysFile, "utf-8"));
 }
 
-async function getNewDevlogs(apiKey: string, projectId: string) {
+async function getNewDevlogs(apiKey: string, projectId: string): Promise<{ name: string, devlogs: FTypes.Devlog[] } | void> {
     const cacheFile = path.join(cacheDir, `${projectId}.json`);
 
     let cachedIds: any[] = [];
@@ -55,10 +55,11 @@ async function getNewDevlogs(apiKey: string, projectId: string) {
         if (!client) return console.error(`No FT client for project ${projectId}`);
 
         const project = await client.project({ id: Number(projectId) });
+        if (!project) return console.error("No project exists at id", projectId)
         const devlogIds = Array.isArray(project?.devlog_ids) ? project.devlog_ids : [];
         const cachedSet = new Set(cachedIds);
         const newIds = devlogIds.filter(id => !cachedSet.has(id));
-        if (newIds.length === 0) return false;
+        if (newIds.length === 0) return;
         const devlogs: any[] = [];
         for (const id of newIds) {
             const res = await client.devlog({ projectId: Number(projectId), devlogId: id });
@@ -68,15 +69,15 @@ async function getNewDevlogs(apiKey: string, projectId: string) {
         if (cachedIds.length === 0) {
             cachedIds.push(...newIds);
             fs.writeFileSync(cacheFile, JSON.stringify(cachedIds, null, 2));
-            return []
+            return { name: project.title, devlogs: [] }
         } else {
             cachedIds.push(...newIds);
             fs.writeFileSync(cacheFile, JSON.stringify(cachedIds, null, 2));
-            return devlogs
+            return { name: project.title, devlogs }
         }
     } catch (err) {
         console.error(`Error fetching devlogs for project ${projectId}:`, err);
-        return false;
+        return;
     }
 }
 
@@ -92,8 +93,8 @@ async function checkAllProjects() {
     for (const [apiKey, data] of Object.entries(apiKeys)) {
         for (const projectId of data.projects) {
             const newDevlogs = await getNewDevlogs(apiKey, projectId);
-            if (!newDevlogs || newDevlogs.length === 0) continue;
-            for (const devlog of newDevlogs) {
+            if (!newDevlogs || newDevlogs.devlogs.length === 0) continue;
+            for (const devlog of newDevlogs.devlogs) {
                 try {
                     const days = Math.floor(devlog.duration_seconds / (24 * 3600));
                     const hours = Math.floor((devlog.duration_seconds % (24 * 3600)) / 3600);
@@ -103,17 +104,37 @@ async function checkAllProjects() {
                     if (hours > 0) durationParts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
                     if (minutes > 0) durationParts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
                     const durationString = durationParts.join(' ');
+                    const createdAt = new Date(devlog.created_at);
+                    const timestamp = createdAt.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 
                     await app.client.chat.postMessage({
                         channel: data.channel,
-                        text: `Woah new devlog for Project ${projectId}`,
                         blocks: [
                             {
                                 type: "section",
                                 text: {
                                     type: "mrkdwn",
-                                    text: `Woah new devlog posted for <https://flavortown.hackclub.com/projects/${projectId}|Project ${projectId}>. Spent a total ${durationString}.`
+                                    text: `:shipitparrot: <https://flavortown.hackclub.com/projects/${projectId}|${newDevlogs.name}> got a new devlog posted! :shipitparrot:`
                                 }
+                            },
+                            {
+                                type: "section",
+                                text: {
+                                    type: "mrkdwn",
+                                    text: `> ${devlog.body}`
+                                }
+                            },
+                            {
+                                "type": "divider"
+                            },
+                            {
+                                "type": "context",
+                                "elements": [
+                                    {
+                                        "type": "mrkdwn",
+                                        "text": `Devlog created at ${timestamp} and took ${durationString}.`
+                                    }
+                                ]
                             }
                         ]
                     });
@@ -122,7 +143,6 @@ async function checkAllProjects() {
                 }
             }
             await new Promise(res => setTimeout(res, 2000));
-
         }
     }
 }
@@ -329,7 +349,7 @@ app.command(process.env.DEV_MODE === "true" ? '/devlpheus-stats' : '/logpheus-st
         const apiKeys = loadApiKeys();
         const userCount = Object.keys(apiKeys).length;
 
-        await respond(` ${userCount} users (API keys)`);
+        await respond(`There is ${userCount} api keys in use.`);
     } catch (error: any) {
         if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
             await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
