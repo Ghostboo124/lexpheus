@@ -1,11 +1,11 @@
 import axios, { type AxiosInstance } from "axios";
 import type * as FTypes from "./ft.d";
-const apiUrl = "https://flavortown.hackclub.com/api/v1"
+
 export default class FT {
     private apiToken: string;
     private fetch: AxiosInstance;
     private ready: Promise<void>;
-    
+
     constructor(apiToken: string) {
         if (apiToken.length === 0) throw new Error("Flavortown API Key is required")
         this.apiToken = apiToken;
@@ -29,7 +29,11 @@ export default class FT {
             });
         }
 
-        return this.fetch.get<FTypes.Projects>("/projects")
+        return this.fetch.get<FTypes.Projects>("/projects", {
+            headers: {
+                "X-Flavortown-Ext-1865": "true"
+            }
+        })
             .then((res) => {
                 return res.data;
             })
@@ -40,7 +44,11 @@ export default class FT {
 
     async project(param: FTypes.ProjectParam) {
         await this.ready;
-        return this.fetch.get<FTypes.Project>("/projects/" + param.id)
+        return this.fetch.get<FTypes.Project>("/projects/" + param.id, {
+            headers: {
+                "X-Flavortown-Ext-1865": "true"
+            }
+        })
             .then((res) => {
                 return res.data;
             })
@@ -60,7 +68,11 @@ export default class FT {
             });
         }
 
-        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.id + "/devlogs")
+        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.id + "/devlogs", {
+            headers: {
+                "X-Flavortown-Ext-1865": "true"
+            }
+        })
             .then((res) => {
                 return res.data;
             })
@@ -71,7 +83,11 @@ export default class FT {
 
     async devlog(param: FTypes.DevlogParam, query?: FTypes.DevlogsQuery) {
         await this.ready;
-        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.projectId + "/devlogs/" + param.devlogId)
+        return this.fetch.get<FTypes.Devlogs>("/projects/" + param.projectId + "/devlogs/" + param.devlogId, {
+            headers: {
+                "X-Flavortown-Ext-1865": "true"
+            }
+        })
             .then((res) => {
                 return res.data;
             })

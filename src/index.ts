@@ -2,6 +2,7 @@ import { App, LogLevel } from "@slack/bolt";
 import FT from "./lib/ft";
 import fs from "fs";
 import path from "path";
+import type FTypes from "./lib/ft.d"
 const apiKeysFile = path.join(__dirname, "../cache/apiKeys.json");
 
 const app = new App({
@@ -40,10 +41,10 @@ function loadApiKeys(): Record<string, {
 async function getNewDevlogs(apiKey: string, projectId: string) {
     const cacheFile = path.join(cacheDir, `${projectId}.json`);
 
-    let cachedDevlogs: any[] = [];
+    let cachedIds: any[] = [];
     if (fs.existsSync(cacheFile)) {
         try {
-            cachedDevlogs = JSON.parse(fs.readFileSync(cacheFile, "utf-8"));
+            cachedIds = JSON.parse(fs.readFileSync(cacheFile, "utf-8"));
         } catch (err) {
             console.error(`Error reading cache for project ${projectId}:`, err);
         }
@@ -53,24 +54,26 @@ async function getNewDevlogs(apiKey: string, projectId: string) {
         const client = clients[apiKey];
         if (!client) return console.error(`No FT client for project ${projectId}`);
 
-        const freshDevlogsRaw = await client.devlogs({ id: Number(projectId) });
-        const freshDevlogs = Array.isArray(freshDevlogsRaw?.devlogs)
-            ? freshDevlogsRaw.devlogs
-            : [];
-
-        if (!fs.existsSync(cacheFile)) {
-            fs.writeFileSync(cacheFile, JSON.stringify(freshDevlogs, null, 2), "utf-8");
+        const project = await client.project({ id: Number(projectId) });
+        const devlogIds = Array.isArray(project?.devlog_ids) ? project.devlog_ids : [];
+        const cachedSet = new Set(cachedIds);
+        const newIds = devlogIds.filter(id => !cachedSet.has(id));
+        if (newIds.length === 0) return false;
+        const devlogs: any[] = [];
+        for (const id of newIds) {
+            const res = await client.devlog({ projectId: Number(projectId), devlogId: id });
+            if (res) devlogs.push(res);
         }
 
-        const cachedIds = new Set(cachedDevlogs.map(d => d.id));
-        const newDevlogs = freshDevlogs.filter(d => !cachedIds.has(d.id));
-
-        if (newDevlogs.length > 0) {
-            fs.writeFileSync(cacheFile, JSON.stringify(freshDevlogs, null, 2), "utf-8");
-            return newDevlogs;
+        if (cachedIds.length === 0) {
+            cachedIds.push(...newIds);
+            fs.writeFileSync(cacheFile, JSON.stringify(cachedIds, null, 2));
+            return []
+        } else {
+            cachedIds.push(...newIds);
+            fs.writeFileSync(cacheFile, JSON.stringify(cachedIds, null, 2));
+            return devlogs
         }
-
-        return false;
     } catch (err) {
         console.error(`Error fetching devlogs for project ${projectId}:`, err);
         return false;
@@ -90,7 +93,6 @@ async function checkAllProjects() {
         for (const projectId of data.projects) {
             const newDevlogs = await getNewDevlogs(apiKey, projectId);
             if (!newDevlogs || newDevlogs.length === 0) continue;
-
             for (const devlog of newDevlogs) {
                 try {
                     const days = Math.floor(devlog.duration_seconds / (24 * 3600));
@@ -243,13 +245,14 @@ app.view('logpheus_add', async ({ ack, view }) => {
     apiKeys[apiKey].projects.push(projectId);
     fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
     const client = new FT(apiKey)
-    const freshDevlogsRaw = await client.devlogs({ id: Number(projectId) });
-    const freshDevlogs = Array.isArray(freshDevlogsRaw?.devlogs)
-        ? freshDevlogsRaw.devlogs
+    const freshDevlogsRaw: FTypes.Project | void = await client.project({ id: Number(projectId) });
+    if (!freshDevlogsRaw) return;
+    const freshDevlogsIds = Array.isArray(freshDevlogsRaw?.devlog_ids)
+        ? freshDevlogsRaw.devlog_ids
         : [];
 
     const cacheFile = path.join(cacheDir, `${projectId}.json`);
-    fs.writeFileSync(cacheFile, JSON.stringify(freshDevlogs, null, 2), "utf-8");
+    fs.writeFileSync(cacheFile, JSON.stringify(freshDevlogsIds, null, 2), "utf-8");
 
     await app.client.chat.postMessage({
         channel: channelId,
@@ -309,6 +312,24 @@ app.command(process.env.DEV_MODE === "true" ? '/devlpheus-remove' : '/logpheus-r
             fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
             return await respond("Removed all projects for this channel.");
         }
+    } catch (error: any) {
+        if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
+            await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
+            return;
+        }
+
+        logger.error(error);
+        await ack("An unexpected error occurred. Check logs.");
+    }
+});
+
+app.command(process.env.DEV_MODE === "true" ? '/devlpheus-stats' : '/logpheus-stats', async ({ command, ack, respond, logger }) => {
+    try {
+        await ack();
+        const apiKeys = loadApiKeys();
+        const userCount = Object.keys(apiKeys).length;
+
+        await respond(` ${userCount} users (API keys)`);
     } catch (error: any) {
         if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
             await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");

@@ -26,6 +26,7 @@ export type Project = {
     repo_url: string;
     demo_url: string;
     readme_url: string;
+    devlog_ids: number[];
     created_at: string;
     updated_at: string;
 }
