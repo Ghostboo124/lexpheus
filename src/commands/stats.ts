@@ -2,7 +2,7 @@ import type { AckFn, RespondArguments, RespondFn, Logger, SlashCommand } from "@
 import type { WebClient } from "@slack/web-api";
 
 export default {
-    name: process.env.DEV_MODE === "true" ? '/devlpheus-add' : '/logpheus-add',
+    name: process.env.DEV_MODE === "true" ? '/devlpheus-stats' : '/logpheus-stats',
     execute: async ({ command, ack, client, respond, logger }: {
         command: SlashCommand,
         ack: AckFn<string | RespondArguments>,

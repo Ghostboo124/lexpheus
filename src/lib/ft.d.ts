@@ -23,6 +23,7 @@ export type Project = {
     id: number;
     title: string;
     description: string;
+    ship_status: "draft" | "pending" | "submitted"
     repo_url: string;
     demo_url: string;
     readme_url: string;
