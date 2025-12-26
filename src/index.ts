@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import type FTypes from "./lib/ft.d"
 const apiKeysFile = path.join(__dirname, "../cache/apiKeys.json");
-
+const cacheDir = path.join(__dirname, "../cache");
 const app = new App({
     signingSecret: process.env.SIGNING_SECRET,
     token: process.env.BOT_TOKEN,
@@ -22,7 +22,6 @@ const app = new App({
     ]
 });
 
-const cacheDir = path.join(__dirname, "../cache");
 let clients: Record<string, FT> = {};
 
 function loadApiKeys(): Record<string, {
@@ -147,201 +146,30 @@ async function checkAllProjects() {
     }
 }
 
-app.command(process.env.DEV_MODE === "true" ? '/devlpheus-add' : '/logpheus-add', async ({ command, body, client, ack, respond, logger }) => {
-    try {
-        const channel = await app.client.conversations.info({
-            channel: command.channel_id
-        })
-        if (!channel) return await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND")
-        if (command.user_id !== channel.channel?.creator) return await ack("You can only run this command in a channel that you are the creator of");
-        await ack()
-        await client.views.open({
-            trigger_id: body.trigger_id,
-            view: {
-                type: 'modal',
-                callback_id: 'logpheus_add',
-                title: {
-                    type: 'plain_text',
-                    text: command.channel_id
-                },
-                blocks: [
-                    {
-                        type: 'input',
-                        block_id: 'projId',
-                        label: {
-                            type: 'plain_text',
-                            text: "What is the project's id"
-                        },
-                        element: {
-                            type: 'plain_text_input',
-                            action_id: 'proj_input',
-                            multiline: false
-                        }
-                    },
-                    {
-                        type: 'input',
-                        block_id: 'ftApiKey',
-                        label: {
-                            type: 'plain_text',
-                            text: "What is your flavortown api key? (This is required everytime you submit a project)"
-                        },
-                        element: {
-                            type: 'plain_text_input',
-                            action_id: 'api_input',
-                            multiline: false
-                        }
-                    }
-                ],
-                submit: {
-                    type: 'plain_text',
-                    text: 'Submit'
-                }
+function loadHandlers(app: App, folder: string, type: "command" | "view") {
+    const folderPath = path.join(__dirname, folder);
+    fs.readdirSync(folderPath).forEach(file => {
+        if (!file.endsWith(".ts") && !file.endsWith(".js")) return;
+
+        const module = require(path.join(folderPath, file)).default;
+
+        if (!module?.name || typeof module.execute !== "function") return;
+
+        // @ts-ignore
+        app[type](module.name, async (args) => {
+            try {
+                await module.execute(args, { loadApiKeys });
+            } catch (err) {
+                console.error(`Error executing ${type} ${module.name}:`, err);
             }
         });
-    } catch (error: any) {
-        if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
-            await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
-            return;
-        }
 
-        logger.error(error);
-        await ack("An unexpected error occurred. Check logs.");
-    }
-});
-
-app.view('logpheus_add', async ({ ack, view }) => {
-    const values = view.state.values;
-    const projectId = values.projId?.proj_input?.value?.trim();
-    const apiKey = values.ftApiKey?.api_input?.value?.trim();
-    const channelId = view.title.text;
-    if (!projectId) {
-        await ack({
-            response_action: 'errors',
-            errors: {
-                projId: 'Project ID is required'
-            }
-        });
-        return;
-    } else if (!apiKey) {
-        await ack({
-            response_action: 'errors',
-            errors: {
-                projId: 'Flavortown API key is required'
-            }
-        });
-        return;
-    }
-
-    const apiKeys = loadApiKeys();
-    if (!apiKeys[apiKey]) {
-        apiKeys[apiKey] = {
-            channel: channelId,
-            projects: []
-        };
-    }
-
-    if (apiKeys[apiKey].channel !== channelId) {
-        await ack({
-            response_action: 'errors',
-            errors: {
-                ftApiKey: 'This API key is already bound to a different channel'
-            }
-        });
-        return;
-    }
-
-    if (apiKeys[apiKey].projects.includes(projectId)) {
-        await ack({
-            response_action: 'errors',
-            errors: {
-                projId: 'Project already registered'
-            }
-        });
-        return;
-    }
-
-    await ack();
-
-    apiKeys[apiKey].projects.push(projectId);
-    fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
-    const client = new FT(apiKey)
-    const freshDevlogsRaw: FTypes.Project | void = await client.project({ id: Number(projectId) });
-    if (!freshDevlogsRaw) return;
-    const freshDevlogsIds = Array.isArray(freshDevlogsRaw?.devlog_ids)
-        ? freshDevlogsRaw.devlog_ids
-        : [];
-
-    const cacheFile = path.join(cacheDir, `${projectId}.json`);
-    fs.writeFileSync(cacheFile, JSON.stringify(freshDevlogsIds, null, 2), "utf-8");
-
-    await app.client.chat.postMessage({
-        channel: channelId,
-        text: `Project ${projectId} successfully added`
+        console.log(`[Logpheus] Registered ${type}: ${module.name}`);
     });
-});
+}
 
-app.command(process.env.DEV_MODE === "true" ? '/devlpheus-remove' : '/logpheus-remove', async ({ command, ack, respond, logger }) => {
-    try {
-        await ack();
-        const channel = await app.client.conversations.info({
-            channel: command.channel_id
-        })
-        if (!channel) return await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND")
-        if (command.user_id !== channel.channel?.creator) return await respond("You can only run this command in a channel that you are the creator of");
-        const apiKeys = loadApiKeys();
-        const projectId = command.text.trim();
-
-        if (projectId.length > 0) {
-            if (!Number.isInteger(Number(projectId))) return await respond("Project ID must be a valid number.");
-            for (const [apiToken, entry] of Object.entries(apiKeys)) {
-                if (entry.projects.includes(projectId)) {
-                    entry.projects = entry.projects.filter(p => p !== projectId);
-
-                    if (entry.projects.length === 0) {
-                        delete apiKeys[apiToken];
-                        delete clients[apiToken];
-                    }
-
-                    delete apiKeys[projectId];
-                    fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
-                    const cacheFilePath = path.join(cacheDir, `${projectId}.json`);
-
-                    if (fs.existsSync(cacheFilePath)) {
-                        fs.unlinkSync(cacheFilePath);
-                    }
-
-                    await respond(`Removed project ${projectId} from list.`)
-                }
-            }
-        } else {
-            let foundKey: string | null = null;
-
-            for (const [apiToken, entry] of Object.entries(apiKeys)) {
-                if (entry.channel === command.channel_id) {
-                    foundKey = apiToken;
-                    break;
-                }
-            }
-
-            if (!foundKey) return await respond("No API key found for this channel.");
-            const entry = apiKeys[foundKey];
-
-            delete apiKeys[foundKey];
-            delete clients[foundKey];
-
-            fs.writeFileSync(apiKeysFile, JSON.stringify(apiKeys, null, 2), "utf-8");
-            return await respond("Removed all projects for this channel.");
-        }
-    } catch (error: any) {
-        if (error.code === "slack_webapi_platform_error" && error.data?.error === "channel_not_found") {
-            await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND");
-            return;
-        }
-
-        logger.error(error);
-        await ack("An unexpected error occurred. Check logs.");
-    }
-});
+loadHandlers(app, "commands", "command");
+loadHandlers(app, "views", "view");
 
 app.command(process.env.DEV_MODE === "true" ? '/devlpheus-stats' : '/logpheus-stats', async ({ command, ack, respond, logger }) => {
     try {

@@ -1,11 +1,11 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "logpheus",
       "dependencies": {
         "@slack/bolt": "^4.6.0",
+        "@slack/web-api": "^7.13.0",
         "axios": "^1.13.2",
       },
       "devDependencies": {
