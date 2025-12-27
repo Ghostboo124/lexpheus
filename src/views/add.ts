@@ -69,7 +69,25 @@ export default {
 
         await client.chat.postMessage({
             channel: channelId,
-            text: `Project ${projectId} successfully added`
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `:woah-dino: <https://flavortown.hackclub.com/projects/${projectId}|${freshProject.title}'s> devlogs just got subscribed to the channel. :yay:`
+                    }
+                },
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `> ${freshProject.description}`
+                    }
+                },
+                {
+                    "type": "divider"
+                }
+            ]
         });
     }
 };
