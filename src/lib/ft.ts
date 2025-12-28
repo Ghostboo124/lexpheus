@@ -13,6 +13,7 @@ export default class FT {
             baseURL: "https://flavortown.hackclub.com/api/v1",
             headers: {
                 Authorization: `Bearer ${this.apiToken}`,
+                "X-Flavortown-Ext-1865": true
             },
         })
         this.ready = Promise.resolve();
@@ -29,11 +30,7 @@ export default class FT {
             });
         }
 
-        return this.fetch.get("/projects", {
-            headers: {
-                "X-Flavortown-Ext-1865": "true"
-            }
-        })
+        return this.fetch.get("/projects")
             .then((res) => {
                 return res.data;
             })
@@ -44,11 +41,7 @@ export default class FT {
 
     async project(param: FTypes.ProjectParam): Promise<FTypes.Project | void> {
         await this.ready;
-        return this.fetch.get("/projects/" + param.id, {
-            headers: {
-                "X-Flavortown-Ext-1865": "true"
-            }
-        })
+        return this.fetch.get("/projects/" + param.id)
             .then((res) => {
                 return res.data;
             })
@@ -68,11 +61,7 @@ export default class FT {
             });
         }
 
-        return this.fetch.get("/projects/" + param.id + "/devlogs", {
-            headers: {
-                "X-Flavortown-Ext-1865": "true"
-            }
-        })
+        return this.fetch.get("/projects/" + param.id + "/devlogs")
             .then((res) => {
                 return res.data;
             })
@@ -83,11 +72,7 @@ export default class FT {
 
     async devlog(param: FTypes.DevlogParam, query?: FTypes.DevlogsQuery): Promise<FTypes.Devlog | void> {
         await this.ready;
-        return this.fetch.get("/projects/" + param.projectId + "/devlogs/" + param.devlogId, {
-            headers: {
-                "X-Flavortown-Ext-1865": "true"
-            }
-        })
+        return this.fetch.get("/projects/" + param.projectId + "/devlogs/" + param.devlogId)
             .then((res) => {
                 return res.data;
             })
