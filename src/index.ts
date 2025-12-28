@@ -211,7 +211,7 @@ async function checkAllProjects() {
                                     type: "section",
                                     text: {
                                         type: "mrkdwn",
-                                        text: `:shipitparrot: <https://flavortown.hackclub.com/projects/${projectId}|${projData.name}> just got shipped and now is in pending! :shipitparrot:`
+                                        text: `:shipitparrot: <https://flavortown.hackclub.com/projects/${projectId}|${projData.name}> just got shipped and now is pending a ship review! :shipitparrot:`
                                     }
                                 },
                             ]
@@ -225,7 +225,7 @@ async function checkAllProjects() {
                                     type: "section",
                                     text: {
                                         type: "mrkdwn",
-                                        text: `:shipitparrot: <https://flavortown.hackclub.com/projects/${projectId}|${projData.name}> got accepted and is fully shipped! :shipitparrot:`
+                                        text: `:shipitparrot: <https://flavortown.hackclub.com/projects/${projectId}|${projData.name}> ship has got accepted and now has entered voting! :shipitparrot:`
                                     }
                                 },
                             ]
