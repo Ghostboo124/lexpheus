@@ -5,7 +5,7 @@ RUN --mount=type=cache,target=/root/.npm \
     bun install --frozen-lockfile --production
 
 COPY src/ /usr/src/app/src/
-RUN mkdir /usr/src/app/src/cache
+RUN mkdir /usr/src/app/cache
 RUn chown -R bun:bun /usr/src/app
 COPY entrypoint.sh /usr/src/app/entrypoint.sh
 RUN chmod +x /usr/src/app/entrypoint.sh
