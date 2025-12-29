@@ -163,10 +163,21 @@ async function checkAllProjects() {
                         if (minutes > 0) durationParts.push(`${minutes} minute${minutes > 1 ? 's' : ''}`);
                         const durationString = durationParts.join(' ');
                         const createdAt = new Date(devlog.created_at);
-                        const timestamp = createdAt.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+                        const timestamp = createdAt.toLocaleString('en-GB', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                            timeZone: 'UTC'
+                        });
+                        const year = createdAt.getUTCFullYear();
+                        const month = (createdAt.getUTCMonth() + 1).toString().padStart(2, '0');
+                        const day = createdAt.getUTCDate().toString().padStart(2, '0');
+                        const cHours = createdAt.getUTCHours().toString().padStart(2, '0');
+                        const cMinutes = createdAt.getUTCMinutes().toString().padStart(2, '0');
+                        const cs50Timestamp = `${year}${month}${day}T${cHours}${cMinutes}+0000`;
 
                         await app.client.chat.postMessage({
                             channel: data.channel,
+                            unfurl_links: false,
                             blocks: [
                                 {
                                     type: "section",
@@ -190,7 +201,7 @@ async function checkAllProjects() {
                                     "elements": [
                                         {
                                             "type": "mrkdwn",
-                                            "text": `Devlog created at ${timestamp} and took ${durationString}.`
+                                            "text": `Devlog created at <https://time.cs50.io/${cs50Timestamp}|${timestamp}> and took ${durationString}.`
                                         }
                                     ]
                                 }
@@ -206,6 +217,7 @@ async function checkAllProjects() {
                     case "pending":
                         await app.client.chat.postMessage({
                             channel: data.channel,
+                            unfurl_links: false,
                             blocks: [
                                 {
                                     type: "section",
@@ -220,6 +232,7 @@ async function checkAllProjects() {
                     case "submitted":
                         await app.client.chat.postMessage({
                             channel: data.channel,
+                            unfurl_links: false,
                             blocks: [
                                 {
                                     type: "section",
