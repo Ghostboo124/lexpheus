@@ -20,6 +20,7 @@ export default {
             })
             if (!channel) return await ack("If you are running this in a private channel then you have to add bot manually first to the channel. CHANNEL_NOT_FOUND")
             if (command.user_id !== channel.channel?.creator) return await ack("You can only run this command in a channel that you are the creator of");
+            if (!Object.values(loadApiKeys()).find(item => item.channel === command.channel_id)) return await ack("Gng you don't even got an api key set to this channel run /logpheus-add first.")
             await ack()
             await client.views.open({
                 trigger_id: command.trigger_id,
@@ -31,6 +32,14 @@ export default {
                         text: command.channel_id
                     },
                     blocks: [
+                        {
+                            type: "section",
+                            block_id: "user_id",
+                            text: {
+                                type: "plain_text",
+                                text: "User: " + command.user_id
+                            },
+                        },
                         {
                             type: 'input',
                             block_id: 'ftApiKey',
