@@ -19,6 +19,20 @@ export default class FT {
         this.ready = Promise.resolve();
     }
 
+    private handleError(err: unknown, projectId?: string) {
+        if (axios.isAxiosError(err)) {
+            const status = err.response?.status ?? "No status";
+            const message = err.response?.data?.message ?? err.message;
+            if (projectId) {
+                console.error(`[${status}] for project ${projectId}: ${message}`);
+            } else {
+                console.error(`[${status}]: ${message}`);
+            }
+        } else {
+            console.error("Unexpected error:", err);
+        }
+    }
+
     async projects(query?: FTypes.ProjectsQuery): Promise<FTypes.Projects | void> {
         await this.ready;
         const queryString = new URLSearchParams();
@@ -35,7 +49,7 @@ export default class FT {
                 return res.data;
             })
             .catch((err) => {
-                console.error("Error fetching projects:", err);
+                this.handleError(err);
             });
     }
 
@@ -46,7 +60,7 @@ export default class FT {
                 return res.data;
             })
             .catch((err) => {
-                console.error("Error fetching projects:", err);
+                this.handleError(err, String(param.id));
             });
     }
 
@@ -66,7 +80,7 @@ export default class FT {
                 return res.data;
             })
             .catch((err) => {
-                console.error("Error fetching projects:", err);
+                this.handleError(err, String(param.id));
             });
     }
 
@@ -77,7 +91,7 @@ export default class FT {
                 return res.data;
             })
             .catch((err) => {
-                console.error("Error fetching projects:", err);
+                this.handleError(err, String(param.projectId));
             });
     }
 }
