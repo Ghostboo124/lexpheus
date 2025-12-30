@@ -1,9 +1,6 @@
 import type { AckFn, ViewOutput, RespondArguments } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import FT from "../lib/ft";
-import type FTypes from "../lib/ft"
-import fs from "node:fs";
-import path from "node:path";
 import type { Database } from "bun:sqlite"
 
 export default {

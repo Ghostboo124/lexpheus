@@ -3,7 +3,7 @@ import type { WebClient } from "@slack/web-api";
 import type { Database } from "bun:sqlite"
 export default {
     name: process.env.DEV_MODE === "true" ? '/devlpheus-stats' : '/logpheus-stats',
-    execute: async ({ command, ack, client, respond, logger }: {
+    execute: async ({ ack, respond, logger }: {
         command: SlashCommand,
         ack: AckFn<string | RespondArguments>,
         client: WebClient,

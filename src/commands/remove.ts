@@ -1,7 +1,5 @@
 import type { AckFn, RespondArguments, RespondFn, Logger, SlashCommand } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
-import fs from "node:fs";
-import path from "node:path";
 import type { Database } from "bun:sqlite"
 import FT from "../lib/ft";
 

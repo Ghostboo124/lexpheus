@@ -1,4 +1,4 @@
-import type { KnownBlock, RichTextBlock, RichTextElement, RichTextSection, RichTextText } from "@slack/web-api";
+import type { KnownBlock, RichTextBlock, RichTextElement } from "@slack/web-api";
 
 export function parseMarkdownToSlackBlocks(text: string): KnownBlock[] {
     if (!text) return [];
