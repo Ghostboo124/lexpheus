@@ -184,11 +184,11 @@ export async function migration(pg: DB): Promise<void> {
     );
 
     if (hasAllTables) {
-        if (await hasMigratedPg("api_keys", pg)) {
+        if (!await hasMigratedPg("api_keys", pg)) {
             await migrateApiKeysFromSqlite(pg)
         }
 
-        if (await hasMigratedPg("projects", pg)) {
+        if (!await hasMigratedPg("projects", pg)) {
             await migrateProjectsFromSqlite(pg)
         }
     }
