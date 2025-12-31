@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { drizzle, PgliteDatabase } from "drizzle-orm/pglite";
+import { PgliteDatabase } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
 import { apiKeys } from "./schema/apiKeys";
 import { metadata } from "./schema/meta";
@@ -7,12 +7,14 @@ import { projectData } from "./schema/project";
 import path from "node:path";
 import fs from "node:fs";
 import type { PGlite } from "@electric-sql/pglite";
+import type { Pool } from "pg";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 const cacheDir = path.join(__dirname, "../cache");
 const apiKeysFile = path.join(__dirname, "../cache/apiKeys.json");
 const db = new Database(path.join(__dirname, "../cache/logpheus.db"), { create: true });
-type DB = PgliteDatabase<Record<string, never>> & {
-    $client: PGlite;
-}
+type DB =
+  | (NodePgDatabase<Record<string, never>> & { $client: Pool })
+  | (PgliteDatabase<Record<string, never>> & { $client: PGlite });
 
 async function hasMigratedPg(key: string, pg: DB): Promise<boolean> {
     try {
@@ -35,7 +37,7 @@ async function markMigratedPg(key: string, pg: DB) {
         .onConflictDoUpdate({
             target: metadata.key,
             set: { value: "true" },
-        });
+       });
 }
 
 async function migrateFromJson(pg: DB) {
