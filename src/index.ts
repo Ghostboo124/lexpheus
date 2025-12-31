@@ -5,18 +5,38 @@ import path from "path";
 import type FTypes from "./lib/ft.d"
 import { containsMarkdown, parseMarkdownToSlackBlocks } from "./lib/parseMarkdown";
 import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
 import { apiKeys } from "./schema/apiKeys";
 import { metadata } from "./schema/meta";
 import { projectData } from "./schema/project";
-import migrate from "./migration"
-
+import { migration } from "./migration";
+import { PGlite } from "@electric-sql/pglite";
+import { Pool } from "pg";
+import type { PgliteDatabase } from "drizzle-orm/pglite";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+type DatabaseType =
+  | (NodePgDatabase<Record<string, never>> & { $client: Pool })
+  | (PgliteDatabase<Record<string, never>> & { $client: PGlite });
 const cacheDir = path.join(__dirname, "../cache");
-const db = new Database(path.join(__dirname, "../cache/logpheus.db"), { create: true });
-const pg = drizzle(path.join(cacheDir, "pg"), {
-    casing: 'snake_case'
-})
+let pg: DatabaseType;
+
+if (process.env.PGLITE === "false") {
+    const { drizzle } = await import("drizzle-orm/node-postgres");
+    const pool = new Pool({
+        connectionString: process.env.DB_URL
+    })
+    pg = drizzle({
+        client: pool,
+        casing: 'snake_case'
+    })
+} else {
+    const { drizzle } = await import("drizzle-orm/pglite");
+    const pgClient = new PGlite(path.join(cacheDir, "pg"));
+    pg = drizzle({
+        client: pgClient,
+        casing: 'snake_case'
+    })
+}
 const apiKeysFile = path.join(__dirname, "../cache/apiKeys.json");
 const app = new App({
     signingSecret: process.env.SIGNING_SECRET,
@@ -124,7 +144,7 @@ async function getNewDevlogs(
 }
 
 async function checkAllProjects() {
-    const apiKeys = loadApiKeys();
+    const apiKeys = await loadApiKeys();
     if (!apiKeys) return;
     for (const [apiKey] of Object.entries(apiKeys)) {
         if (!clients[apiKey]) {
@@ -298,8 +318,7 @@ loadHandlers(app, "views", "view");
 
 (async () => {
     try {
-        await migrate()
-
+        // await migration(pg);
         app.logger.setName("[Logpheus]")
         app.logger.setLevel('error' as LogLevel);
 

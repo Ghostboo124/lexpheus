@@ -78,3 +78,23 @@ export type StoreItem = {
     }
 }
 export type Store = StoreItem[];
+
+export type User = {
+    id: number;
+    slack_id: string;
+    display_name: string;
+    avatar: string
+    project_ids: number[];
+    vote_count: number;
+    like_count: number;
+    devlog_seconds_total: number;
+    devlog_seconds_today: number;
+    cookies: number | null;
+}
+export type UserParams = {
+    id: string | "me";
+}
+export type Users = User[];
+export type UsersQuery = {
+    page?: number;
+}

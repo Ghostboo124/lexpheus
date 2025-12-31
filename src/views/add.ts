@@ -49,6 +49,13 @@ export default {
             user: userId,
             text: 'Flavortown API key is invalid every api key should be 46 characters long',
         });
+        const ftClient = new FT(apiKey)
+        await ftClient.user({ id: "me" })
+        if (ftClient.lastCode === 401) return await client.chat.postEphemeral({
+            channel: channelId,
+            user: userId,
+            text: 'Flavortown API Key is invalid, provide a valid one.',
+        });
         const exists = await pg.select().from(apiKeys).where(eq(apiKeys.apiKey, apiKey))
         let projects: string[] = [];
         if (exists.length > 0) {
@@ -72,7 +79,6 @@ export default {
                 projects
             })
 
-        const ftClient = new FT(apiKey)
         const freshProject = await ftClient.project({ id: Number(projectId) });
         if (!freshProject) return;
 

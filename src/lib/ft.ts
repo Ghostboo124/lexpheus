@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from "axios";
 import type * as FTypes from "./ft.d";
 
 export default class FT {
+    lastCode: number | null = null;
     private apiToken: string;
     private fetch: AxiosInstance;
     private ready: Promise<void>;
@@ -19,17 +20,29 @@ export default class FT {
         this.ready = Promise.resolve();
     }
 
-    private handleError(err: unknown, projectId?: string) {
+    private async handleError(err: unknown, projectId?: string, log: boolean = true): Promise<void> {
         if (axios.isAxiosError(err)) {
             const status = err.response?.status ?? "No status";
             const message = err.response?.data?.message ?? err.message;
-            if (projectId) {
-                console.error(`[${status}] for project ${projectId}: ${message}`);
-            } else {
-                console.error(`[${status}]: ${message}`);
+            if (log) {
+                if (projectId) {
+                    console.error(`[${status}] for project ${projectId}: ${message}`);
+                } else {
+                    console.error(`[${status}]: ${message}`);
+                }
             }
+
+            this.lastCode =
+                err?.response?.status ??
+                err?.status ??
+                null;
+
+            return;
         } else {
-            console.error("Unexpected error:", err);
+            if (log) {
+                console.error("Unexpected error:", err);
+            }
+            return
         }
     }
 
@@ -44,8 +57,9 @@ export default class FT {
             });
         }
 
-        return this.fetch.get("/projects")
+        return this.fetch.get("/projects" + queryString)
             .then((res) => {
+                this.lastCode = res.status;
                 return res.data;
             })
             .catch((err) => {
@@ -57,6 +71,7 @@ export default class FT {
         await this.ready;
         return this.fetch.get("/projects/" + param.id)
             .then((res) => {
+                this.lastCode = res.status;
                 return res.data;
             })
             .catch((err) => {
@@ -75,12 +90,14 @@ export default class FT {
             });
         }
 
-        return this.fetch.get("/projects/" + param.id + "/devlogs")
+        return this.fetch.get("/projects/" + param.id + "/devlogs" + queryString)
             .then((res) => {
+                this.lastCode = res.status;
                 return res.data;
             })
             .catch((err) => {
                 this.handleError(err, String(param.id));
+                return err;
             });
     }
 
@@ -88,10 +105,45 @@ export default class FT {
         await this.ready;
         return this.fetch.get("/projects/" + param.projectId + "/devlogs/" + param.devlogId)
             .then((res) => {
+                this.lastCode = res.status;
                 return res.data;
             })
             .catch((err) => {
                 this.handleError(err, String(param.projectId));
+            });
+    }
+
+    async users(query: FTypes.UsersQuery): Promise<FTypes.Users | void> {
+        await this.ready;
+        const queryString = new URLSearchParams();
+        if (query) {
+            Object.entries(query).forEach(([key, value]) => {
+                if (value !== undefined) {
+                    queryString.append(key, String(value));
+                }
+            });
+        }
+        return this.fetch.get("/users/" + queryString)
+            .then((res) => {
+                this.lastCode = res.status;
+                return res.data;
+            })
+            .catch((err) => {
+                this.handleError(err, String(queryString));
+            });
+    }
+
+
+    async user(param: FTypes.UserParams): Promise<FTypes.User | void> {
+        await this.ready;
+        return this.fetch.get("/users/" + param.id)
+            .then((res) => {
+                this.lastCode = res.status;
+                return res.data;
+            })
+            .catch(async (err) => {
+                await this.handleError(err, String(param.id), false);
+                return {} as FTypes.User;
             });
     }
 }

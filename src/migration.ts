@@ -1,29 +1,34 @@
 import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/pglite";
+import { drizzle, PgliteDatabase } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
 import { apiKeys } from "./schema/apiKeys";
 import { metadata } from "./schema/meta";
 import { projectData } from "./schema/project";
 import path from "node:path";
 import fs from "node:fs";
+import type { PGlite } from "@electric-sql/pglite";
 const cacheDir = path.join(__dirname, "../cache");
 const apiKeysFile = path.join(__dirname, "../cache/apiKeys.json");
 const db = new Database(path.join(__dirname, "../cache/logpheus.db"), { create: true });
-const pg = drizzle(path.join(cacheDir, "pg"), {
-    casing: 'snake_case'
-})
-
-async function hasMigratedPg(key: string): Promise<boolean> {
-    const row = await pg
-        .select({ value: metadata.value })
-        .from(metadata)
-        .where(eq(metadata.key, key))
-        .limit(1);
-
-    return row[0]?.value === "true";
+type DB = PgliteDatabase<Record<string, never>> & {
+    $client: PGlite;
 }
 
-async function markMigratedPg(key: string) {
+async function hasMigratedPg(key: string, pg: DB): Promise<boolean> {
+    try {
+        const row = await pg
+            .select({ value: metadata.value })
+            .from(metadata)
+            .where(eq(metadata.key, key))
+            .limit(1);
+
+        return row[0]?.value === "true";
+    } catch (err) {
+        return false
+    }
+}
+
+async function markMigratedPg(key: string, pg: DB) {
     await pg
         .insert(metadata)
         .values({ key, value: "true" })
@@ -33,8 +38,8 @@ async function markMigratedPg(key: string) {
         });
 }
 
-async function migrateFromJson() {
-    if (!await hasMigratedPg("project_cache")) {
+async function migrateFromJson(pg: DB) {
+    if (!await hasMigratedPg("project_cache", pg)) {
         if (!fs.existsSync(cacheDir)) return;
 
         for (const file of fs.readdirSync(cacheDir)) {
@@ -74,7 +79,7 @@ async function migrateFromJson() {
         }
     }
 
-    if (!await hasMigratedPg("api_keys")) {
+    if (!await hasMigratedPg("api_keys", pg)) {
         const data = JSON.parse(fs.readFileSync(apiKeysFile, "utf-8"));
         for (const [apiKey, cfg] of Object.entries<any>(data)) {
             const exists = await pg.select().from(apiKeys).where(eq(apiKeys.apiKey, apiKey)).limit(1);
@@ -96,7 +101,7 @@ async function migrateFromJson() {
     }
 }
 
-async function migrateProjectsFromSqlite() {
+async function migrateProjectsFromSqlite(pg: DB) {
     const rows = db
         .query(`SELECT project_id, ids, ship_status FROM project_cache`)
         .all() as any[];
@@ -135,7 +140,7 @@ async function migrateProjectsFromSqlite() {
     }
 }
 
-async function migrateApiKeysFromSqlite() {
+async function migrateApiKeysFromSqlite(pg: DB) {
     const rows = db
         .query(`SELECT api_key, channel, projects FROM api_keys`)
         .all() as any[];
@@ -165,8 +170,8 @@ async function migrateApiKeysFromSqlite() {
     console.log("[PG Migration] api_keys migrated");
 }
 
-export default async function migration(): Promise<void> {
-    if (await hasMigratedPg("api_keys") && await hasMigratedPg("projects")) return;
+export async function migration(pg: DB): Promise<void> {
+    if (await hasMigratedPg("api_keys", pg) && await hasMigratedPg("projects", pg)) return;
     const existingTables = db
         .prepare(
             `SELECT name FROM sqlite_master WHERE type = 'table'`
@@ -179,23 +184,22 @@ export default async function migration(): Promise<void> {
     );
 
     if (hasAllTables) {
-        if (await hasMigratedPg("api_keys")) {
-            await migrateApiKeysFromSqlite()
+        if (await hasMigratedPg("api_keys", pg)) {
+            await migrateApiKeysFromSqlite(pg)
         }
 
-        if (await hasMigratedPg("projects")) {
-            await migrateProjectsFromSqlite()
+        if (await hasMigratedPg("projects", pg)) {
+            await migrateProjectsFromSqlite(pg)
         }
     }
 
     const jsonFiles = fs.readdirSync(cacheDir).filter(f => f.endsWith(".json"));
 
     if (jsonFiles.length > 0) {
-        await migrateFromJson();
+        await migrateFromJson(pg);
     }
 
-    markMigratedPg("projects");
-    markMigratedPg("api_keys")
+    markMigratedPg("projects", pg);
+    markMigratedPg("api_keys", pg);
+    Promise.resolve();
 }
-
-migration()

@@ -4,10 +4,11 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pg": "^8.16.0"
   },
   "scripts": {
-    "migrate": "bunx drizzle-kit push && bun run src/migration.ts",
+    "migrate": "bunx drizzle-kit push",
     "dev:manual": "bun run src/index.ts",
     "dev": "infisical run --env=dev -- bun run src/index.ts"
   },
@@ -20,6 +21,7 @@
     "@slack/web-api": "^7.13.0",
     "axios": "^1.13.2",
     "drizzle-kit": "^0.31.8",
-    "drizzle-orm": "^0.45.1"
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.16.3"
   }
 }
