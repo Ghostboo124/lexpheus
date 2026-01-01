@@ -88,7 +88,6 @@ async function getNewDevlogs(
     try {
         const client = clients[apiKey];
         if (!client) return console.error(`No FT client for project ${projectId}`);
-
         const project = await client.project({ id: Number(projectId) });
         if (!project) return console.error("No project exists at id", projectId);
 
@@ -331,7 +330,7 @@ loadHandlers(app, "views", "view");
             console.info('[Logpheus] Running on port:', port);
         }
 
-        checkAllProjects()
+        await checkAllProjects()
         setInterval(checkAllProjects, 60 * 1000);
     } catch (error) {
         console.error('Unable to start app:', error);

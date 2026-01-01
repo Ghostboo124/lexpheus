@@ -53,7 +53,7 @@ export default {
                     response_type: "ephemeral"
                 })
 
-                const updatedProjects = data.projects.filter(p => p !== projectId);
+                const updatedProjects = data.projects.filter(p => p !== Number(projectId));
                 if (updatedProjects.length > 0) {
                     await pg.update(apiKeys)
                         .set({

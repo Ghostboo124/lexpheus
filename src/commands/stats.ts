@@ -22,7 +22,6 @@ export default {
             const data =  await pg
                 .select()
                 .from(apiKeys);
-            console.log(data)
             const result = await pg
                 .select({ count: count() })
                 .from(apiKeys);

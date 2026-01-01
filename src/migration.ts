@@ -201,7 +201,7 @@ export async function migration(pg: DB): Promise<void> {
         await migrateFromJson(pg);
     }
 
-    markMigratedPg("projects", pg);
-    markMigratedPg("api_keys", pg);
+    await markMigratedPg("projects", pg);
+    await markMigratedPg("api_keys", pg);
     Promise.resolve();
 }
