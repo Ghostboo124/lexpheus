@@ -9,6 +9,7 @@ COPY drizzle.config.ts /usr/src/app/drizzle.config.ts
 RUN mkdir /usr/src/app/cache
 RUN chown -R bun:bun /usr/src/app
 COPY entrypoint.sh /usr/src/app/entrypoint.sh
+RUN bunx drizzle-kit generate
 RUN chmod +x /usr/src/app/entrypoint.sh
 RUN chmod 700 /usr/src/app/cache
 RUN --mount=type=cache,target=/var/cache/apk apk add --no-cache curl su-exec
