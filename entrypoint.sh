@@ -1,13 +1,14 @@
 #!/bin/sh
 set -e
-if [ ! -d "/usr/src/app/cache" ]; then
-  mkdir -p "/usr/src/app/cache"
-fi
+
+mkdir -p "/usr/src/app/cache"
 
 if [ ! -f "/usr/src/app/cache/.setup" ]; then
-  exec su-exec bun bun run migrate
-  exec su-exec bun touch .setup
+  echo "Running migrations..."
+  su-exec bun bun run migrate
+  su-exec bun touch "/usr/src/app/cache/.setup"
 fi
 
-chown -R bun:bun /usr/src/app/cache
+echo "Starting app..."
 exec su-exec bun bun run src/index.ts
+
