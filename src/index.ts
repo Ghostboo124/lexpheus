@@ -22,7 +22,7 @@ let pg: DatabaseType;
 if (process.env.SENTRY_DSN) {
     Sentry.init({
         dsn: process.env.SENTRY_DSN,
-        release: process.env.SENTRY_NAME || "logpheus",
+        release: process.env.SENTRY_NAME || "lexpheus",
         integrations: [],
         tracesSampleRate: 0,
         sendDefaultPii: true,
@@ -143,7 +143,7 @@ async function getNewDevlogs(
 
                     await app.client.chat.postMessage({
                         channel: String(row[0]?.channel),
-                        text: "Hey! You're project has been disabled from devlog tracking because of the api key returning 401! Setup the API Key again in /logpheus-config to get it re-enabled."
+                        text: "Hey! You're project has been disabled from devlog tracking because of the api key returning 401! Setup the API Key again in /lexpheus-config to get it re-enabled."
                     })
                 } else {
                     if (sentryEnabled) {

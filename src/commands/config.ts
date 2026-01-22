@@ -6,7 +6,7 @@ import { apiKeys } from "../schema/apiKeys";
 import { eq } from "drizzle-orm";
 
 export default {
-    name: process.env.DEV_MODE === "true" ? '/devlpheus-config' : '/logpheus-config',
+    name: process.env.DEV_MODE === "true" ? '/devlexpheus-config' : '/lexpheus-config',
     execute: async ({ command, ack, client, logger, respond }: {
         command: SlashCommand,
         ack: AckFn<string | RespondArguments>,
@@ -34,14 +34,14 @@ export default {
             });
             const res = await pg.select().from(apiKeys).where(eq(apiKeys.channel, channel.channel.id))
             if (res.length === 0) return await respond({
-                text: "Gng you don't even got an api key set to this channel run /logpheus-add first.",
+                text: "Gng you don't even got an api key set to this channel run /lexpheus-add first.",
                 response_type: "ephemeral"
             })
             await client.views.open({
                 trigger_id: command.trigger_id,
                 view: {
                     type: 'modal',
-                    callback_id: 'logpheus_config',
+                    callback_id: 'lexpheus_config',
                     title: {
                         type: 'plain_text',
                         text: command.channel_id
